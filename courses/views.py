@@ -59,9 +59,9 @@ def feedback(request):
         "feedback": course.feedback
     })
 
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
 @api_view(["GET"])
+@authentication_classes(authentication_classes=[TokenAuthentication])
+@permission_classes(permission_classes=[IsAuthenticated])
 def courses(request: HttpRequest):
     courses = Course.objects.all()
     c = []
@@ -103,9 +103,9 @@ def courses(request: HttpRequest):
         "courses": c
     })
 
+@api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@api_view(["GET"])
 def course(request: HttpRequest, pk):
     course = None
     try:
@@ -175,9 +175,9 @@ def course(request: HttpRequest, pk):
         "created_at": course.created_at,
     })
 
+@api_view(["POST"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@api_view(["POST"])
 def create_course(request: HttpRequest):
     name = request.data.get("name")
     author = request.user
@@ -196,9 +196,9 @@ def create_course(request: HttpRequest):
     )
     return Response()
 
+@api_view(["POST"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@api_view(["POST"])
 def update_course(request: HttpRequest, course_id):
     name = request.data.get("name")
     image = request.FILES.get("image")
@@ -275,9 +275,9 @@ def update_course(request: HttpRequest, course_id):
         print("courses:views:update_course", e)
     return Response()
 
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
 @api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 def add_module(request: HttpRequest, pk):
     try:
         name = request.data.get("name")
@@ -305,9 +305,9 @@ def add_module(request: HttpRequest, pk):
             "message": "Course is not defined"
         })
     
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
 @api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 def edit_module(request: HttpRequest, pk):
     try:
         name = request.data.get("name")
@@ -335,9 +335,9 @@ def edit_module(request: HttpRequest, pk):
             "message": "Course is not defined"
         })
     
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
 @api_view(["GET"])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 def modules(request: HttpRequest, pk):
     try:
         course = Course.objects.get(pk=pk)
@@ -360,9 +360,9 @@ def modules(request: HttpRequest, pk):
             "message": "course is not found"
         })
 
+@api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@api_view(["GET"])
 def module(request: HttpRequest, course_id, module_id):
     course = Course.objects.get(pk=course_id)
     module = Module.objects.get(pk=module_id)
@@ -474,9 +474,9 @@ def module(request: HttpRequest, course_id, module_id):
         "lessons": lessons
     })
 
+@api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@api_view(["GET"])
 def lesson(request, course_id, module_id, lesson_id):
     lesson = Lesson.objects.get(pk=lesson_id)
     previous = lesson.previous
@@ -573,17 +573,17 @@ def lesson(request, course_id, module_id, lesson_id):
             "score": lesson.score
         })
 
+@api_view(["POST"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@api_view(["POST"])
 def end_lesson(request: HttpRequest, course_id, module_id, lesson_id):
     lesson = Lesson.objects.get(pk=lesson_id)
     lesson.finishers.add(request.user)
     return Response()
 
+@api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@api_view(["GET"])
 def add_lesson(request: HttpRequest, pk):
     try:
         module = Module.objects.get(pk=pk)
@@ -603,9 +603,9 @@ def add_lesson(request: HttpRequest, pk):
             "message": ""
         })
     
+@api_view(["POST"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@api_view(["POST"])
 def create_question(request: HttpRequest):
     quiz = request.data.get("quiz")
     data = request.data.get("data")
@@ -712,9 +712,9 @@ def create_question(request: HttpRequest):
         "quiz": quiz.pk
     })
 
+@api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@api_view(["GET"])
 def quiz_questions(request: HttpRequest, pk):
     quiz = Quiz.objects.get(pk=pk)
     questions = []
@@ -767,9 +767,9 @@ def quiz_questions(request: HttpRequest, pk):
         "questions": questions
     })
 
+@api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@api_view(["GET"])
 def module_lessons(request: HttpRequest, pk):
     module = Module.objects.get(pk=pk)
     lessons = Lesson.objects.filter(module=module)
@@ -791,9 +791,9 @@ def module_lessons(request: HttpRequest, pk):
     })  
 
 
+@api_view(["GET"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@api_view(["GET"])
 def subjects(request: HttpRequest):
     subjects = Subject.objects.all()
     s = []
