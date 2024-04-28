@@ -19,6 +19,46 @@ from .models import (
 from users.models import User
 from config.settings import BASE_DIR
 
+
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+@api_view(["POST"])
+def feedback(request):
+    pk = request.data.get("course_id")
+    feed = request.data.get("feedback")
+    course = None
+    try:
+        course = Course.objects.get(pk=pk)
+    except Exception as e:
+        print(e)
+        return Response({
+            "status": "error",
+            "message": "Kurs topilmadi"
+        })
+    try:
+        feed = float(feed)
+    except Exception as e:
+        print(e)
+        return Response({
+            "status": "error",
+            "message": "feedback butun son bo'lishi kerak(0 va 5 oralig'ida)"
+        })
+    if feed > 0 or feed > 5:
+        return Response({
+            "status": "message",
+            "message": "feedback 0 va 5 oralig'ida bo'lishi kerak"
+        })
+    course_feedback = course.feedback
+    course.feedbackers.add(request.user)
+    course.save()
+    course.feedback = (course_feedback + feed) / course.feedbackers.count()
+    course.save()
+    return Response({
+        "status": "success",
+        "message": "feedback yuborildi",
+        "feedback": course.feedback
+    })
+
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 @api_view(["GET"])
@@ -63,8 +103,8 @@ def courses(request: HttpRequest):
         "courses": c
     })
 
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 @api_view(["GET"])
 def course(request: HttpRequest, pk):
     course = None
@@ -135,8 +175,8 @@ def course(request: HttpRequest, pk):
         "created_at": course.created_at,
     })
 
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 @api_view(["POST"])
 def create_course(request: HttpRequest):
     name = request.data.get("name")
@@ -156,8 +196,8 @@ def create_course(request: HttpRequest):
     )
     return Response()
 
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 @api_view(["POST"])
 def update_course(request: HttpRequest, course_id):
     name = request.data.get("name")
@@ -320,8 +360,229 @@ def modules(request: HttpRequest, pk):
             "message": "course is not found"
         })
 
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+@api_view(["GET"])
+def module(request: HttpRequest, course_id, module_id):
+    course = Course.objects.get(pk=course_id)
+    module = Module.objects.get(pk=module_id)
+    required = module.required
+    if required:
+        required = required.name
+    else:
+        required = None
+    lessons = []
+    for lesson in Lesson.objects.filter(module=module):
+        previous = lesson.previous
+        next = lesson.next
+        if previous:
+            previous = {
+                "id": previous.pk,
+                "name": previous.name
+            }
+        else:
+            previous = None
+        if next:
+            next = {
+                "id": next.pk,
+                "name": next.name
+            }
+        else:
+            next = None
+        resource = lesson.resource
+        if resource:
+            resource = request.build_absolute_uri(resource.url)
+        else:
+            resource = None
+        quiz = None
+        questions = []
+        if lesson.quiz:
+            quiz = lesson.quiz
+            # print(quiz.questions.all())
+            for question in quiz.questions.all():
+                answers = []
+                if question.type == "writeable":
+                    answers.append({
+                        "answer": question.answers.first().value_1,
+                        "is_correct": True
+                    })
+                elif question.type == "many_select":
+                    for answer in question.answers.all():
+                        answers.append({
+                            "answer": answer.value_1,
+                            "is_correct": answer.is_correct
+                        })
+                    random.shuffle(answers)
+                elif question.type == "one_select":
+                    for answer in question.answers.all():
+                        answers.append({
+                            "answer": answer.value_1,
+                            "is_correct": answer.is_correct
+                        })
+                    random.shuffle(answers)
+                elif question.type == "matchable":
+                    for answer in question.answers.all():
+                        answers.append({
+                            "value_1": answer.value_1,
+                            "value_2": answer.value_2
+                        })
+                    d = []
+                    keys = [i.get("value_1") for i in answers]
+                    values = [i.get("value_2") for i in answers]
+                    random.shuffle(keys)
+                    random.shuffle(values)
+                    for i, j in zip(keys, values):
+                        d.append({
+                            "value_1": i,
+                            "value_2": j
+                        })
+                    answers = d
+                questions.append({
+                    "question": question.question,
+                    "type": question.type,
+                    "answers": answers
+                })
+        if quiz:
+            lessons.append({
+                "name": lesson.name,
+                "id": lesson.pk,
+                "type": lesson.type,
+                "duration": lesson.duration,
+                "video": lesson.video,
+                "resource": resource,
+                "quiz": questions,
+                "previous": previous,
+                "next": next,
+                "score": lesson.score
+            })
+        else:
+            lessons.append({
+                "name": lesson.name,
+                "id": lesson.pk,
+                "type": lesson.type,
+                "duration": lesson.duration,
+                "video": lesson.video,
+                "resource": resource,
+                "previous": previous,
+                "next": next,
+                "score": lesson.score
+            })
+    return Response({
+        "id": module.pk,
+        "name": module.name,
+        "required": required,
+        "lessons": lessons
+    })
+
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+@api_view(["GET"])
+def lesson(request, course_id, module_id, lesson_id):
+    lesson = Lesson.objects.get(pk=lesson_id)
+    previous = lesson.previous
+    next = lesson.next
+    if previous:
+        previous = {
+            "id": previous.pk,
+            "name": previous.name
+        }
+    else:
+        previous = None
+    if next:
+        next = {
+            "id": next.pk,
+            "name": next.name
+        }
+    else:
+        next = None
+    resource = lesson.resource
+    if resource:
+        resource = request.build_absolute_uri(resource.url)
+    else:
+        resource = None
+    quiz = None
+    questions = []
+    if lesson.quiz:
+        quiz = lesson.quiz
+        for question in quiz.questions.all():
+            answers = []
+            if question.type == "writeable":
+                answers.append({
+                    "answer": question.answers.first().value_1,
+                    "is_correct": True
+                })
+            elif question.type == "many_select":
+                for answer in question.answers.all():
+                    answers.append({
+                        "answer": answer.value_1,
+                        "is_correct": answer.is_correct
+                    })
+                random.shuffle(answers)
+            elif question.type == "one_select":
+                for answer in question.answers.all():
+                    answers.append({
+                        "answer": answer.value_1,
+                        "is_correct": answer.is_correct
+                    })
+                random.shuffle(answers)
+            elif question.type == "matchable":
+                for answer in question.answers.all():
+                    answers.append({
+                        "value_1": answer.value_1,
+                        "value_2": answer.value_2
+                    })
+                d = []
+                keys = [i.get("value_1") for i in answers]
+                values = [i.get("value_2") for i in answers]
+                random.shuffle(keys)
+                random.shuffle(values)
+                for i, j in zip(keys, values):
+                    d.append({
+                        "value_1": i,
+                        "value_2": j
+                    })
+                answers = d
+            questions.append({
+                "question": question.question,
+                "type": question.type,
+                "answers": answers
+            })
+    if quiz:
+        return Response({
+            "name": lesson.name,
+            "id": lesson.pk,
+            "type": lesson.type,
+            "duration": lesson.duration,
+            "video": lesson.video,
+            "resource": resource,
+            "quiz": questions,
+            "previous": previous,
+            "next": next,
+            "score": lesson.score
+        })
+    else:
+        return Response({
+            "name": lesson.name,
+            "id": lesson.pk,
+            "type": lesson.type,
+            "duration": lesson.duration,
+            "video": lesson.video,
+            "resource": resource,
+            "previous": previous,
+            "next": next,
+            "score": lesson.score
+        })
+
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+@api_view(["POST"])
+def end_lesson(request: HttpRequest, course_id, module_id, lesson_id):
+    lesson = Lesson.objects.get(pk=lesson_id)
+    lesson.finishers.add(request.user)
+    return Response()
+
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 @api_view(["GET"])
 def add_lesson(request: HttpRequest, pk):
     try:
@@ -342,8 +603,8 @@ def add_lesson(request: HttpRequest, pk):
             "message": ""
         })
     
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 @api_view(["POST"])
 def create_question(request: HttpRequest):
     quiz = request.data.get("quiz")
@@ -451,8 +712,8 @@ def create_question(request: HttpRequest):
         "quiz": quiz.pk
     })
 
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 @api_view(["GET"])
 def quiz_questions(request: HttpRequest, pk):
     quiz = Quiz.objects.get(pk=pk)
@@ -506,8 +767,8 @@ def quiz_questions(request: HttpRequest, pk):
         "questions": questions
     })
 
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 @api_view(["GET"])
 def module_lessons(request: HttpRequest, pk):
     module = Module.objects.get(pk=pk)
@@ -530,8 +791,8 @@ def module_lessons(request: HttpRequest, pk):
     })  
 
 
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 @api_view(["GET"])
 def subjects(request: HttpRequest):
     subjects = Subject.objects.all()

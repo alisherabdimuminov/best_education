@@ -47,6 +47,7 @@ class Course(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, blank=True, related_name="course_subject")
     description = models.TextField()
     feedback = models.FloatField(null=True, default=0)
+    feedbackers = models.ManyToManyField(User, related_name="course_feedbackers", null=True, blank=True)
     price = models.IntegerField()
     students = models.ManyToManyField(User, related_name="course_students", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
